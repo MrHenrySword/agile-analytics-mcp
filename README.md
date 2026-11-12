@@ -8,8 +8,9 @@ answers with the same numbers the Agile Analytics extension shows, because it
 runs the extension's own metric code.
 
 It is part of your Agile Analytics subscription: it answers only when the
-extension is installed in your organisation and a workflow mapping is saved
-for the project. Nothing is sent to Baytek.
+extension is installed in your organisation, the organisation is on its
+trial or has a valid licence, and a workflow mapping is saved for the
+project. Nothing is sent to Baytek.
 
 Full guide: https://ado-analytics.baytekdev.com/docs/local-ai-connector/
 
@@ -37,14 +38,22 @@ change anything.
 
 ### Where the token goes
 
-- **Windows:** set it as a **user environment variable named
-  `AZURE_DEVOPS_PAT`** (Start → "Edit environment variables for your
-  account" → New). Keep it out of the assistant's config file. Restart your
-  assistant afterwards so it sees the new variable.
+- **Claude Desktop, on every system:** it does not pass your environment
+  variables to connectors, so put the token in the server entry's **`"env"`
+  block** as `AZURE_DEVOPS_PAT` (shown in the example below), and keep that
+  config file readable by your user account only.
+- **Windows, other assistants (Claude Code, VS Code):** set it as a **user
+  environment variable named `AZURE_DEVOPS_PAT`** (Start → "Edit environment
+  variables for your account" → New), which keeps it out of config files.
+  Restart your assistant afterwards so it sees the new variable.
 - **macOS and Linux:** desktop assistants do not read your shell profile, so
   put the token in the server entry's **`"env"` block** as
   `AZURE_DEVOPS_PAT` (shown in the examples below), and keep that config file
   readable by your user account only (`chmod 600 <file>`).
+
+If the connector answers `azure-cli-sign-in-required` (`settings-unreadable`
+before 6.76.1) although the variable is set, your assistant is not passing it
+to the connector: use the `"env"` block.
 
 The token stays in the connector's memory. It is never printed, logged or
 written anywhere.
@@ -57,21 +66,11 @@ The connector starts with:
 npx -y @baytekdev/agile-analytics-mcp
 ```
 
-**Claude Desktop** (Settings → Developer → Edit Config, which opens
-`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "agile-analytics": {
-      "command": "npx",
-      "args": ["-y", "@baytekdev/agile-analytics-mcp"]
-    }
-  }
-}
-```
-
-On macOS and Linux, add the token to the same entry:
+**Claude Desktop** (Settings → Desktop app → Extensions → Edit config, under
+Local MCP servers; in older versions Settings → Developer → Edit Config. It
+opens `claude_desktop_config.json`: add the `mcpServers` section, keeping
+anything already in the file, save, then quit Claude Desktop completely, from
+the tray icon too, and open it again):
 
 ```json
 {
@@ -84,6 +83,10 @@ On macOS and Linux, add the token to the same entry:
   }
 }
 ```
+
+Claude Desktop needs the token in the entry on Windows too: it does not pass
+your environment variables to the connector. Leave the `"env"` line out only
+if you sign in with the Azure CLI.
 
 **Claude Code** (one command, stored for your user account only):
 
@@ -133,8 +136,9 @@ turns them into words.
 
 If you would rather not create a token, the connector can use the Azure CLI:
 run `az login` once, and leave `AZURE_DEVOPS_PAT` unset. This works for
-organisations connected to Microsoft Entra; Microsoft-account-only
-organisations cannot use it. To pick the Entra tenant, add
+organisations connected to Microsoft Entra, with an account that is a member
+of the organisation; Microsoft-account-only organisations cannot use it and
+need a token. To pick the Entra tenant, add
 `"--tenant", "<tenant-guid>"` to `args` (anything but a GUID is refused).
 
 The connector looks for credentials in this order: `AZURE_DEVOPS_PAT`, then
@@ -177,7 +181,12 @@ so it counts the same items as the extension does.
   from metrics" list, the Item Types mapping, the admin switch, your own
   WIP limit and weekend preferences, the organisation and project weekend
   defaults, and the sub-teams choice: named settings only. It never lists
-  the settings, so it cannot see licence or other values.
+  the settings, so it cannot see other values.
+- **Licence state:** whether your organisation is on its trial or has a
+  valid licence, from what the extension last stored in Azure DevOps: the
+  plan, when the licence was last validated, the trial dates and when the
+  extension last reached the licence server. **Never** the activation token,
+  the licence's id or the organisation name on it.
 - **Never** guesses a workflow mapping: no saved mapping means the answer
   `workflow-not-mapped`.
 
@@ -187,8 +196,9 @@ never a title, a name or a comment.
 ## What leaves your computer
 
 Requests to `dev.azure.com` and `extmgmt.dev.azure.com`, made with your own
-access. **Nothing is sent to Baytek**: no licence check, no telemetry, no
-usage counts. The answers go to your assistant, and what your assistant
+access. **Nothing is sent to Baytek**: no telemetry, no usage counts, and
+the licence is checked on your computer from what is stored in your Azure
+DevOps organisation, not by asking Baytek. The answers go to your assistant, and what your assistant
 does with them is between you and your assistant's provider.
 
 ## Turning it off for your organisation
@@ -205,11 +215,23 @@ anyone's Azure DevOps permissions.
 
 Errors are a bare code, for example `{"error":"workflow-not-mapped"}`:
 
-- `azure-cli-sign-in-required`: no token was found and the Azure CLI is not
-  signed in. Set `AZURE_DEVOPS_PAT` (see step 1) or run `az login`.
+- `azure-cli-sign-in-required`: Azure DevOps did not accept your sign-in, or
+  there is none. Check that `AZURE_DEVOPS_PAT` is set, has not expired and has
+  the three scopes (see step 1). On the Azure CLI route, run `az login` again;
+  if the organisation is not connected to Microsoft Entra, or your account is
+  not a member of it, the Azure CLI route cannot work there, so use a token.
 - `workflow-not-mapped`: save a workflow mapping for this project in the
   extension first.
 - `disabled-by-admin`: an admin turned the connector off.
+- `licence-inactive`: the organisation's trial has ended and it has no valid
+  licence, or its licence has not been confirmed for 30 days. That happens
+  when nobody has opened the Agile Analytics hub page for 30 days (a
+  dashboard widget does not count), or when the stored licence needs
+  attention. Open Agile Analytics in Azure DevOps: a valid licence is
+  confirmed again when the hub opens, and the trial-ended screen shows how to
+  add a licence key. If the answer stays the same, an admin opens
+  Configuration → License and follows the message there, or writes to
+  license@baytekdev.com.
 - `settings-unreadable`: the extension's settings could not be read (is the
   extension installed, and does the token have Extension Data: Read?).
 - `ado-request-failed`: Azure DevOps refused or failed a request (check the
@@ -230,15 +252,59 @@ see it at once.
 
 - **Aging zones and trend** (the p50/p85 bands and the per-sprint trend).
 
-## About this repository
+## Developing
 
-This repository holds the documentation for the connector. The package is
-published on npm as
-[`@baytekdev/agile-analytics-mcp`](https://www.npmjs.com/package/@baytekdev/agile-analytics-mcp)
-and is part of [Agile Analytics for Azure DevOps](https://ado-analytics.baytekdev.com/),
-available on the
-[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=Baytek.agile-analytics).
-The source code is not published here.
+This package lives in `mcp/` of the Agile Analytics extension repository and
+imports the extension's metric code by path (`mcp/src/core/index.ts`), never
+a copy, so its numbers cannot drift. **Rule: no partial numbers.** Where the
+connector cannot read what the extension reads, the number is left out, not
+approximated.
 
-Questions and problems: open an issue in this repository, or write to
-license@baytekdev.com.
+- **Build:** `npx webpack --config mcp/webpack.config.js` writes
+  `mcp/dist/server.js` (the bin) and `mcp/dist/cli.js` (hand testing). Every
+  dependency is bundled, so the package has none at run time.
+- **Gate:** `npm run check` builds the bundle, fails if it contains the
+  extension SDK, the licence server client or telemetry code, a Baytek
+  address, or `fetch(`
+  outside `mcp/src/data/adoClient.ts`, then runs `npm pack --dry-run` in
+  `mcp/` and fails unless the package holds exactly `package.json`,
+  `README.md`, `LICENSE` and `dist/*.js`, under 2 MB.
+- **Version:** `node scripts/bump-version.mjs --target all` bumps
+  `mcp/package.json` with the extension manifests.
+- **Hand testing:** `node mcp/dist/cli.js sprint_summary --org <org>
+--project "<project>" --team "<team>"` prints one tool's JSON;
+  `node mcp/test/live/liveClient.mjs --org <org> --project "<project>"
+--team "<team>"` starts the server and calls every tool (skipped unless
+  `AZURE_DEVOPS_PAT` is set). `--extension agile-analytics-v2` targets the
+  private V2 test listing.
+- **Tests:** `npx vitest run mcp/test` (part of the full suite; needs
+  `node scripts/setup-test-fixtures.mjs`). The parity tests prove each tool
+  equals the extension on the repo's scenario captures and hand-built
+  histories.
+- **The admin switch** is the org document `agile-analytics:mcp-settings:v1`
+  (`{"disabled": true}` = off, no document = on), written only by
+  `McpConnectorSwitch` in the extension and only read here.
+
+How each tool matches the extension:
+
+- `sprint_summary`: delivered and cycle time from `buildSprintReport`;
+  commitment and carryover from Sprint Summary's own
+  `buildVisibleSprintMetricsFromBaseline` on the item pool and Day-1 ASOF
+  baseline that `getSprintScopeWorkItems` builds, with the same WIQL ladder
+  (`mcp/src/data/sprintScope.ts`).
+- `cycle_time`: the Cycle Time view's `loadPointsForTeam` sample and
+  `findCycleDays`, nearest-rank `percentile`. The view also offers a
+  1-sprint window; the connector keeps 3, 6 and 12.
+- `flow_efficiency`: the Flow Efficiency view's `aggregateAcrossMappings`.
+- `wip`: `isInProgressAtInstant` on the running sprint, as `getWip` does.
+- `aging`: the Aging view's `agingViewsWithCarryover`; the weekend basis
+  follows `useAgingWeekendPreference.ts` (`mcp/src/settings/agingWeekends.ts`).
+- `forecast`: the Monte Carlo view's default path (12 sprints of
+  throughput, the running sprint dropped, the seeded simulation).
+- Which items count: the extension's `subTeamScopeRules.ts` and
+  `parentScopeFilter.ts`, applied by `mcp/src/data/subTeamScope.ts`. Two
+  limits: the connector cannot see Baytek's backend kill switch for the
+  sub-teams feature, so it assumes on; and where the extension carries on
+  after a failed team read, the connector answers `ado-request-failed`.
+- The read cache: `mcp/src/data/readCache.ts` (10 minutes, at most 500
+  answers, successful reads only).
