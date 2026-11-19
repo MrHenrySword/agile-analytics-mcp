@@ -1,0 +1,13 @@
+# Nobody watches GitHub issues on this repository, so "New issue" offers these
+# ways to reach us instead of an empty form.
+blank_issues_enabled: false
+contact_links:
+  - name: Question, problem or licence request
+    url: https://ado-analytics.baytekdev.com/support/?intent=question&source=github-connector
+    about: Reach the Agile Analytics team through the support page, or email license@baytekdev.com.
+  - name: Report a security vulnerability privately
+    url: https://github.com/MrHenrySword/agile-analytics-mcp/security/advisories/new
+    about: Opens a private report that only Baytek can read. Please do not post security details in public.
+  - name: Set-up guide for the local AI connector
+    url: https://ado-analytics.baytekdev.com/docs/local-ai-connector/
+    about: How to connect your own AI assistant to Agile Analytics, step by step.
