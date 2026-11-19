@@ -7,7 +7,9 @@ runs on your own computer, reads Azure DevOps with your own access, and
 answers with the same numbers the Agile Analytics extension shows, because it
 runs the extension's own metric code.
 
-It is part of your Agile Analytics subscription: it answers only when the
+It works during the trial and on every paid plan, for the people who hold a
+seat (on Team and Business, the assigned people; on a trial, on Premium and
+on the older plans, everyone in the organisation). It answers only when the
 extension is installed in your organisation, the organisation is on its
 trial or has a valid licence, and a workflow mapping is saved for the
 project. Nothing is sent to Baytek.
@@ -132,6 +134,29 @@ team. For example: "Sprint summary for team Platform in project Contoso Web,
 organisation contoso". Each answer is the tool's numbers; your assistant
 turns them into words.
 
+**First time?** Ask "check the Agile Analytics connector status for
+organisation contoso" (the `status` tool, below): it says what is still
+missing, one check at a time.
+
+### Remembering your organisation, project and team
+
+If you mostly ask about one team, set these once in the server entry's
+`"env"` block (next to the token) and leave them out of your questions:
+
+```json
+"env": {
+  "AZURE_DEVOPS_PAT": "<your token>",
+  "AGILE_ANALYTICS_ORG": "contoso",
+  "AGILE_ANALYTICS_PROJECT": "Contoso Web",
+  "AGILE_ANALYTICS_TEAM": "Platform"
+}
+```
+
+Each one is optional, and a name you do give in a question still wins. The
+connector reads them when it starts, so restart your assistant after a
+change. A value that is not a valid name answers `invalid-input`. Leaving
+them unset (or empty) changes nothing.
+
 ## Signing in with the Azure CLI instead
 
 If you would rather not create a token, the connector can use the Azure CLI:
@@ -152,7 +177,9 @@ later), then the Azure CLI.
   end of day one, completed of committed, reliability, scope added and
   removed). Commitment is `null` until the end of day one has passed.
 - `cycle_time` and `flow_efficiency` (`sprints` 3, 6 or 12, default 6): the
-  last N **finished** sprints, never the running one.
+  last N **finished** sprints, never the running one. `from` and `to` are
+  the dates those sprints cover (the earliest start and the latest end), so
+  your assistant can say the period instead of naming sprints by id.
 - `wip`: the running sprint's items in progress right now.
 - `aging`: open work in the current sprint, carried-over items from the
   previous sprint included, per item its stage, days in that stage and days
@@ -161,11 +188,55 @@ later), then the Azure CLI.
   same default the Aging view uses.
 - `forecast` (`mode` `howMany` with `windowDays`, default 30; or `when`
   with `backlog`): the Monte Carlo view's default forecast.
+- `status` (`org`; `project` and `team` optional): what the connector still
+  needs, without stopping at the first problem. It runs the same checks
+  every tool runs, in the same order, and gives each one a fixed word:
+  `signIn` (`ok` / `sign-in-required`), `settings` (`ok` /
+  `settings-unreadable`), `adminSwitch` (`on` / `off`), `licence` (`trial` /
+  `licensed` / `licence-inactive`), `seat` (`ok` / `no-seat`),
+  `workflowMapping` (`saved` / `workflow-not-mapped`, checked only with a
+  project and team) and `plan` (`open` / `assigned-seats`). A check after
+  one that failed is `not-checked`; a check that could not run says why with
+  an error code (for example `team-not-found`). It also gives the
+  connector's version and the organisation it looked at, and nothing else:
+  no names, no e-mail addresses, nothing about the licence but those words.
 
 Every answer also carries `scope`: `includesSubTeams` (the extension's
 "Include the sub-teams' work" applies to this team and is on) and
 `excludedTeamCount` (how many other teams' items this answer leaves out),
 so it counts the same items as the extension does.
+
+On Premium (a plan open to the whole organisation, trials and the older
+plans included), every answer of the six tools also carries
+`openInAgileAnalytics`: a link that opens the matching view of the
+extension for that team, built only from the organisation, project and
+team you gave and fixed words, for example
+`https://dev.azure.com/contoso/Contoso%20Web/_apps/hub/Baytek.agile-analytics.agile-analytics-hub#view=cycle-time&team=Platform`.
+On Team and Business the answers are the same without the link. When the
+plan cannot be read, the link is added.
+
+Every tool is marked read-only for your assistant (it changes nothing and
+reads Azure DevOps), has a short title, and publishes the shape of its answer
+(an output schema). Each answer comes twice in one reply: as JSON text and as
+structured content of that shape.
+
+## Ready-made commands (Premium)
+
+Three commands your assistant can offer in its prompt or slash-command
+menu: **Sprint review** (`sprint_review`), **Stand-up** (`stand_up`) and
+**Forecast** (`forecast`). Each takes an optional organisation, project and
+team (the remembered ones by default) and gives your assistant a short task:
+which tools to call and how to present the answer (numbers and their dates
+first, sample sizes, work item ids to open, never invented titles or names,
+and a word of caution when a number rests on few sprints). With no
+organisation known, the task starts by asking you for it.
+
+The commands are part of the **Premium** plan, that is a plan open to the
+whole organisation (trials and the older plans count too). On Team and
+Business the command answers that it is part of Premium; the six questions
+and the `status` check still work on every plan for everyone who holds a
+seat: ask them in your own words. When the plan cannot be read, the
+command is offered anyway.
 
 ## What it reads, and what it never reads
 
@@ -182,6 +253,11 @@ so it counts the same items as the extension does.
   WIP limit and weekend preferences, the organisation and project weekend
   defaults, and the sub-teams choice: named settings only. It never lists
   the settings, so it cannot see other values.
+- **Your seat:** the plan's access rule the extension last stored and, when
+  it limits seats, the organisation's access list (who is assigned, who is
+  an extension admin, and who asked for access) and your own Azure DevOps
+  identity, to see whether you hold a seat. They are used on your computer
+  for a yes or no. None of it is put in an answer.
 - **Licence state:** whether your organisation is on its trial or has a
   valid licence, from what the extension last stored in Azure DevOps: the
   plan, when the licence was last validated, the trial dates and when the
@@ -191,7 +267,10 @@ so it counts the same items as the extension does.
   `workflow-not-mapped`.
 
 Answers contain numbers, dates, fixed words, ids and work item ids only,
-never a title, a name or a comment.
+never a title, a name or a comment. The exceptions are what you typed
+yourself: the link back to the extension (organisation, project and team)
+and, in the `status` answer, the organisation name and the connector's
+version.
 
 ## What leaves your computer
 
@@ -223,6 +302,14 @@ Errors are a bare code, for example `{"error":"workflow-not-mapped"}`:
 - `workflow-not-mapped`: save a workflow mapping for this project in the
   extension first.
 - `disabled-by-admin`: an admin turned the connector off.
+- `no-seat`: your organisation's plan gives Agile Analytics to assigned
+  people only (Team and Business), and you are not one of them. Ask an
+  extension admin to assign you a seat in Configuration → Access Control. On
+  a trial, on Premium and on the older plans everyone in the organisation can
+  use the connector. Two things to check first: open Agile Analytics in Azure
+  DevOps once and ask again (after a plan change the connector sees the new
+  plan only once the extension has stored it), and make sure the token or
+  the Azure CLI sign-in belongs to the same account you use in the browser.
 - `licence-inactive`: the organisation's trial has ended and it has no valid
   licence, or its licence has not been confirmed for 30 days. That happens
   when nobody has opened the Agile Analytics hub page for 30 days (a
@@ -234,6 +321,13 @@ Errors are a bare code, for example `{"error":"workflow-not-mapped"}`:
   license@baytekdev.com.
 - `settings-unreadable`: the extension's settings could not be read (is the
   extension installed, and does the token have Extension Data: Read?).
+- `throttled`: Azure DevOps is limiting how fast your account can read, and
+  was still busy after the connector asked again. Wait a minute and ask
+  again.
+- `timed-out`: Azure DevOps took too long to answer. Ask again, or ask for
+  fewer sprints.
+- `forbidden`: your Azure DevOps account cannot read this project or team.
+  Ask a project admin for access, or check the token's scopes.
 - `ado-request-failed`: Azure DevOps refused or failed a request (check the
   token's scopes and expiry).
 - `team-not-found`, `sprint-not-found`, `no-finished-sprints`,
