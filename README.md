@@ -16,6 +16,31 @@ project. Nothing is sent to Baytek.
 
 Full guide: https://ado-analytics.baytekdev.com/docs/local-ai-connector/
 
+## About Agile Analytics
+
+Agile Analytics is an extension for Azure DevOps, published by Baytek
+Software. It adds sprint, flow and forecasting analytics inside Azure DevOps,
+built from your own Azure Boards data: Sprint Summary and commitment
+reliability, cycle time and flow efficiency, work in progress and aging,
+Monte Carlo forecasts, DORA metrics, and reports for stakeholders.
+
+- Every view runs in your browser with four read-only permissions. Sprint
+  contents, work item titles, pull requests, code, comments and attachments
+  are not sent to a Baytek server.
+- Every Azure DevOps organisation gets a 30-day free trial on install, with
+  no payment details.
+
+Where to go next:
+
+- Install it: https://marketplace.visualstudio.com/items?itemName=Baytek.agile-analytics
+- Documentation: https://ado-analytics.baytekdev.com/docs/
+- How the numbers are calculated:
+  https://github.com/MrHenrySword/agile-analytics-mcp/blob/main/docs/how-the-numbers-are-calculated.md
+- What data leaves your organisation:
+  https://github.com/MrHenrySword/agile-analytics-mcp/blob/main/docs/data-and-privacy.md
+- Pricing: https://ado-analytics.baytekdev.com/pricing/
+- Release notes: https://ado-analytics.baytekdev.com/release-notes/
+
 ## Before you start
 
 - **Node.js 22 or later** on your computer (`node --version`). The connector
@@ -346,59 +371,10 @@ see it at once.
 
 - **Aging zones and trend** (the p50/p85 bands and the per-sprint trend).
 
-## Developing
+## Help and security
 
-This package lives in `mcp/` of the Agile Analytics extension repository and
-imports the extension's metric code by path (`mcp/src/core/index.ts`), never
-a copy, so its numbers cannot drift. **Rule: no partial numbers.** Where the
-connector cannot read what the extension reads, the number is left out, not
-approximated.
-
-- **Build:** `npx webpack --config mcp/webpack.config.js` writes
-  `mcp/dist/server.js` (the bin) and `mcp/dist/cli.js` (hand testing). Every
-  dependency is bundled, so the package has none at run time.
-- **Gate:** `npm run check` builds the bundle, fails if it contains the
-  extension SDK, the licence server client or telemetry code, a Baytek
-  address, or `fetch(`
-  outside `mcp/src/data/adoClient.ts`, then runs `npm pack --dry-run` in
-  `mcp/` and fails unless the package holds exactly `package.json`,
-  `README.md`, `LICENSE` and `dist/*.js`, under 2 MB.
-- **Version:** `node scripts/bump-version.mjs --target all` bumps
-  `mcp/package.json` with the extension manifests.
-- **Hand testing:** `node mcp/dist/cli.js sprint_summary --org <org>
---project "<project>" --team "<team>"` prints one tool's JSON;
-  `node mcp/test/live/liveClient.mjs --org <org> --project "<project>"
---team "<team>"` starts the server and calls every tool (skipped unless
-  `AZURE_DEVOPS_PAT` is set). `--extension agile-analytics-v2` targets the
-  private V2 test listing.
-- **Tests:** `npx vitest run mcp/test` (part of the full suite; needs
-  `node scripts/setup-test-fixtures.mjs`). The parity tests prove each tool
-  equals the extension on the repo's scenario captures and hand-built
-  histories.
-- **The admin switch** is the org document `agile-analytics:mcp-settings:v1`
-  (`{"disabled": true}` = off, no document = on), written only by
-  `McpConnectorSwitch` in the extension and only read here.
-
-How each tool matches the extension:
-
-- `sprint_summary`: delivered and cycle time from `buildSprintReport`;
-  commitment and carryover from Sprint Summary's own
-  `buildVisibleSprintMetricsFromBaseline` on the item pool and Day-1 ASOF
-  baseline that `getSprintScopeWorkItems` builds, with the same WIQL ladder
-  (`mcp/src/data/sprintScope.ts`).
-- `cycle_time`: the Cycle Time view's `loadPointsForTeam` sample and
-  `findCycleDays`, nearest-rank `percentile`. The view also offers a
-  1-sprint window; the connector keeps 3, 6 and 12.
-- `flow_efficiency`: the Flow Efficiency view's `aggregateAcrossMappings`.
-- `wip`: `isInProgressAtInstant` on the running sprint, as `getWip` does.
-- `aging`: the Aging view's `agingViewsWithCarryover`; the weekend basis
-  follows `useAgingWeekendPreference.ts` (`mcp/src/settings/agingWeekends.ts`).
-- `forecast`: the Monte Carlo view's default path (12 sprints of
-  throughput, the running sprint dropped, the seeded simulation).
-- Which items count: the extension's `subTeamScopeRules.ts` and
-  `parentScopeFilter.ts`, applied by `mcp/src/data/subTeamScope.ts`. Two
-  limits: the connector cannot see Baytek's backend kill switch for the
-  sub-teams feature, so it assumes on; and where the extension carries on
-  after a failed team read, the connector answers `ado-request-failed`.
-- The read cache: `mcp/src/data/readCache.ts` (10 minutes, at most 500
-  answers, successful reads only).
+- Questions and problems: https://ado-analytics.baytekdev.com/support/ or
+  support@baytekdev.com.
+- Security reports, in private:
+  https://github.com/MrHenrySword/agile-analytics-mcp/security/advisories/new
+  or support@baytekdev.com with the subject line `[SECURITY]`.
