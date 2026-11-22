@@ -18,6 +18,11 @@ admin can change it under Configuration.
 Cycle time, flow efficiency, throughput, commitment reliability and carryover
 all follow that mapping. If a number looks wrong, check the mapping first.
 
+An open work item in a state the mapping does not cover is still shown:
+Aging & Blocked lists it in a "Not mapped" lane, with its own state and its
+days in that state. States Azure DevOps files as finished or removed are left
+out.
+
 Guide: https://ado-analytics.baytekdev.com/docs/workflow-mapping/
 
 ## Flow
@@ -46,6 +51,10 @@ planned the day before the sprint starts.
 
 **Scope Change.** Work added to the sprint after day 1, and work removed from
 it after day 1. An item that goes in and comes straight out again is neutral.
+A work item that was not in the sprint while it ran and was moved into it
+after the sprint's last day is not added scope: Sprint Summary lists it on
+its own line. A work item created directly in a past sprint still counts as
+added.
 
 **Commitment reliability.** The share of planned items that were done by the
 end of the sprint. Work finished up to 24 hours after the last sprint day
@@ -70,10 +79,16 @@ https://ado-analytics.baytekdev.com/blog/how-to-see-scope-change-during-a-sprint
 
 ## Forecasts
 
-Monte Carlo forecasting resamples the throughput of your finished sprints in
-10,000 trials. It answers "how many items by this date?" or "when will this
-many items be finished?" as a range, at 50%, 70%, 85% and 95% confidence,
-not as a single date.
+Monte Carlo forecasting resamples the throughput of your 6 newest finished
+sprints in 10,000 trials. It answers "how many items by this date?" or "when
+will this many items be finished?" as a range, at 50%, 70%, 85% and 95%
+confidence, not as a single date.
+
+By weeks, it resamples the items finished in each of the last 8, 12 or 26
+complete weeks (Monday to Sunday, UTC; the current week is not included).
+Where your Workflow Mapping has more than one done state, an item counts in
+the week it first reached a done state; otherwise in the week of its Closed
+Date.
 
 ## Where to read more
 

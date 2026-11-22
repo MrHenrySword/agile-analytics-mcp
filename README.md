@@ -273,6 +273,10 @@ command is offered anyway.
   assigned person, tags, description or comments.
 - **Team settings:** the team's sprints and working days, and which teams
   sit under this one.
+- **Work item types:** the project's work item type names and, when an
+  aging answer has open items in states the Workflow Mapping does not
+  cover, each type's states with their Azure DevOps category, so finished
+  or removed states are left out as the Aging view does.
 - **Agile Analytics settings:** the saved workflow mapping, the "Exclude
   from metrics" list, the Item Types mapping, the admin switch, your own
   WIP limit and weekend preferences, the organisation and project weekend
